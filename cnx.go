@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 // función para comprobar errores (ahorra escritura)
@@ -67,14 +68,32 @@ func server() {
 			scanner := bufio.NewScanner(conn) // el scanner nos permite trabajar con la entrada línea a línea (por defecto)
 
 			for scanner.Scan() { // escaneamos la conexión
-				acc := scanner.Text() //ESTO ES EL TEXTO QUE HA RECIBIDO DE EL CLIENTE, ES DECIR LO QUE HEMOS TECLEADO EN EL CLIENTE
 
-				if acc == "prueba" {
-					os.Rename("local/pruebo.txt", "remoto/pruebo.txt") //AQUÍ CAMBIA DE LUGAR EL FICHERO PRUEBO.TXT
-					fmt.Println("cliente[", port, "]----: ", acc)
+				acc := scanner.Text()          // Texto que recibimos del CLIENTE
+				arg := strings.Split(acc, " ") //Separamos la orden del parámetro con split.
+				salida := ""
+
+				switch arg[0] { //Según la orden hacemos una cosa u otra. (MOVE, GET, etc...)
+
+				case "upload":
+					fmt.Println("cliente[", port, "]: ", acc)
+					os.Rename("local/"+arg[1], "remoto/"+arg[1])
+					salida = "Archivo subido con éxito.\n "
+				case "get":
+					// AQUÍ CÓDIGO PARA RECUPERAR FICHERO
+
+					os.Rename("remoto/"+arg[1], "local/"+arg[1])
+					salida = "Archivo subido con éxito.\n "
+				default:
+					salida = "Acción inválida. Acciones disponibles: UPLOAD y GET, seguido de espacio y nombre del archivo."
 				}
+				//fmt.Println("cliente[", port, "]----: ", arg[0])
+				//if acc == "prueba" {
+				//AQUÍ CAMBIA DE LUGAR EL FICHERO PRUEBO.TXT
+
+				//}
 				// mostramos el mensaje del cliente
-				fmt.Fprintln(conn, "ack: ", scanner.Text()) // enviamos ack al cliente
+				fmt.Fprintln(conn, "ack: ", salida) // enviamos ack al cliente
 			}
 
 			conn.Close() // cerramos al finalizar el cliente (EOF se envía con ctrl+d o ctrl+z según el sistema)
