@@ -28,6 +28,10 @@ import (
 	"os"
 )
 
+//Credentials for user
+const user_name = "sds@gmail.com"
+const user_password = "sds2015"
+
 // función para comprobar errores (ahorra escritura)
 func chk(e error) {
 	if e != nil {
@@ -36,16 +40,13 @@ func chk(e error) {
 }
 
 func main() {
-
-	fmt.Println("pub.go :: un ejemplo de clave pública en Go.")
 	s := "Introduce srv para funcionalidad de servidor y cli para funcionalidad de cliente"
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "srv":
-			fmt.Println("Entrando en modo servidor...")
+			fmt.Println("Server started...")
 			server()
 		case "cli":
-			fmt.Println("Entrando en modo cliente...")
 			client()
 		default:
 			fmt.Println("Parámetro '", os.Args[1], "' desconocido. ", s)
@@ -126,18 +127,21 @@ func server() {
 			je = json.NewEncoder(aeswr)
 			jd = json.NewDecoder(aesrd)
 
-			// envíamos un mensaje de HELLO (ejemplo)
-			je.Encode(&Msg{Id: "HELLO", Arg: nil})
-
 			// leemos el mensaje de HELLO del cliente y lo imprimimos
 			var m Msg
 			jd.Decode(&m)
-			fmt.Println(m)
-
-			je.Encode(&Msg{Id: "TEST", Arg: "prueba"})
+			username := m.Arg.(string)
 			jd.Decode(&m)
-			fmt.Println(m.Arg)
+			password := m.Arg.(string)
 
+			//We check the user credentials and response to client
+			if checkCredentials(username, password) {
+				je.Encode(&Msg{Id: "Success", Arg: "Welcome to SaferFile"})
+				fmt.Println("User logged in correctyly")
+			} else {
+				je.Encode(&Msg{Id: "Failure", Arg: "User name or password is incorrect"})
+				fmt.Println("User couldn't log in")
+			}
 			conn.Close() // cerramos la conexión
 			fmt.Println("cierre[", port, "]")
 
@@ -155,8 +159,8 @@ func client() {
 	chk(err)
 	defer conn.Close() // es importante cerrar la conexión al finalizar
 
-	fmt.Println("conectado a ", conn.RemoteAddr())
-
+	fmt.Println("Conected at ", conn.RemoteAddr())
+	fmt.Println("You are going to be ask for your user credentials")
 	var srv_pub rsa.PublicKey // contendrá la clave pública del servidor
 
 	je := json.NewEncoder(conn) // creamos un encoder/decoder de JSON sobre la conexión
@@ -200,16 +204,28 @@ func client() {
 	// redefinimos los encoder/decoder JSON para que trabajen sobre la conexión cifrada con AES
 	je = json.NewEncoder(aeswr)
 	jd = json.NewDecoder(aesrd)
+	username := ""
+	password := ""
+	fmt.Println("Type your username:")
+	fmt.Scan(&username)
+	fmt.Println("Type your password:")
+	fmt.Scan(&password)
 
-	// envíamos un mensaje de HELLO (ejemplo)
-	je.Encode(&Msg{Id: "HELLO", Arg: nil})
+	// We send the user credentials to server side
+	je.Encode(&Msg{Id: "username", Arg: username})
+	je.Encode(&Msg{Id: "password", Arg: password})
 
-	// leemos el mensaje de HELLO del servidor y lo imprimimos
+	// We read the response from server side
 	var m Msg
 	jd.Decode(&m)
-	fmt.Println(m)
-
-	je.Encode(&Msg{Id: "TEST", Arg: "prueba"})
-	jd.Decode(&m)
 	fmt.Println(m.Arg)
+}
+
+func checkCredentials(username string, pass string) bool {
+	if username == user_name && pass == user_password {
+		return true
+	} else {
+		return false
+	}
+
 }
