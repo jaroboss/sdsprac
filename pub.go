@@ -25,6 +25,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -140,40 +141,34 @@ func server() {
 			if checkCredentials(username, password) {
 				je.Encode(&Msg{Id: "Success", Arg: "Welcome to SaferFile"})
 				fmt.Println("User logged in correctyly")
+				scanner := bufio.NewScanner(conn) // el scanner nos permite trabajar con la entrada línea a línea (por defecto)
+
+				for scanner.Scan() { // escaneamos la conexión
+
+					acc := scanner.Text()          // Texto que recibimos del CLIENTE
+					arg := strings.Split(acc, " ") //Separamos la orden del parámetro con split.
+					salida := ""
+
+					switch arg[0] { //Según la orden hacemos una cosa u otra. (MOVE, GET, etc...)
+
+					case "upload":
+						fmt.Println("cliente[", port, "]: ", acc)
+						CopyFile("local/"+arg[1], "uploads")
+						salida = "Archivo cifrado y subido con éxito.\n "
+					case "get":
+						// AQUÍ CÓDIGO PARA RECUPERAR FICHERO
+
+						os.Rename("remoto/"+arg[1], "local/"+arg[1])
+						salida = "Archivo descifrado y recuperado con éxito.\n "
+					default:
+						salida = "Acciones disponibles: UPLOAD o GET seguido de espacio y nombre de archivo."
+					}
+					// mostramos el mensaje del cliente
+					fmt.Fprintln(conn, "ack: ", salida) // enviamos ack al cliente
+				}
 			} else {
 				je.Encode(&Msg{Id: "Failure", Arg: "User name or password is incorrect"})
 				fmt.Println("User couldn't log in")
-			}
-
-			scanner := bufio.NewScanner(conn) // el scanner nos permite trabajar con la entrada línea a línea (por defecto)
-
-			for scanner.Scan() { // escaneamos la conexión
-
-				acc := scanner.Text()          // Texto que recibimos del CLIENTE
-				arg := strings.Split(acc, " ") //Separamos la orden del parámetro con split.
-				salida := ""
-
-				switch arg[0] { //Según la orden hacemos una cosa u otra. (MOVE, GET, etc...)
-
-				case "upload":
-					fmt.Println("cliente[", port, "]: ", acc)
-					os.Rename("local/"+arg[1], "remoto/"+arg[1])
-					salida = "Archivo cifrado y subido con éxito.\n "
-				case "get":
-					// AQUÍ CÓDIGO PARA RECUPERAR FICHERO
-
-					os.Rename("remoto/"+arg[1], "local/"+arg[1])
-					salida = "Archivo descifrado y recuperado con éxito.\n "
-				default:
-					salida = "Acciones disponibles: UPLOAD o GET seguido de espacio y nombre de archivo."
-				}
-				//fmt.Println("cliente[", port, "]----: ", arg[0])
-				//if acc == "prueba" {
-				//AQUÍ CAMBIA DE LUGAR EL FICHERO PRUEBO.TXT
-
-				//}
-				// mostramos el mensaje del cliente
-				fmt.Fprintln(conn, "ack: ", salida) // enviamos ack al cliente
 			}
 
 			conn.Close() // cerramos la conexión
@@ -240,6 +235,7 @@ func client() {
 	jd = json.NewDecoder(aesrd)
 	username := ""
 	password := ""
+
 	fmt.Println("Type your username:")
 	fmt.Scan(&username)
 	fmt.Println("Type your password:")
@@ -254,14 +250,14 @@ func client() {
 	jd.Decode(&m)
 	fmt.Println(m.Arg)
 
-	keyscan := bufio.NewScanner(os.Stdin) // scanner para la entrada estándar (teclado)
+	/*keyscan := bufio.NewScanner(os.Stdin) // scanner para la entrada estándar (teclado)
 	netscan := bufio.NewScanner(conn)     // scanner para la conexión (datos desde el servidor)
 
 	for keyscan.Scan() { // escaneamos la entrada
 		fmt.Fprintln(conn, keyscan.Text())         // enviamos la entrada al servidor
 		netscan.Scan()                             // escaneamos la conexión
 		fmt.Println("servidor: " + netscan.Text()) // mostramos mensaje desde el servidor
-	}
+	}*/
 }
 
 func checkCredentials(username string, pass string) bool {
@@ -271,4 +267,64 @@ func checkCredentials(username string, pass string) bool {
 		return false
 	}
 
+}
+
+// CopyFile copies a file from src to dst. If src and dst files exist, and are
+// the same, then return success. Otherise, attempt to create a hard link
+// between the two files. If that fail, copy the file contents from src to dst.
+func CopyFile(src, dst string) (err error) {
+	sfi, err := os.Stat(src)
+	if err != nil {
+		return
+	}
+	if !sfi.Mode().IsRegular() {
+		// cannot copy non-regular files (e.g., directories,
+		// symlinks, devices, etc.)
+		return fmt.Errorf("CopyFile: non-regular source file %s (%q)", sfi.Name(), sfi.Mode().String())
+	}
+	dfi, err := os.Stat(dst)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return
+		}
+	} else {
+		if !(dfi.Mode().IsRegular()) {
+			return fmt.Errorf("CopyFile: non-regular destination file %s (%q)", dfi.Name(), dfi.Mode().String())
+		}
+		if os.SameFile(sfi, dfi) {
+			return
+		}
+	}
+	if err = os.Link(src, dst); err == nil {
+		return
+	}
+	err = copyFileContents(src, dst)
+	return
+}
+
+// copyFileContents copies the contents of the file named src to the file named
+// by dst. The file will be created if it does not already exist. If the
+// destination file exists, all it's contents will be replaced by the contents
+// of the source file.
+func copyFileContents(src, dst string) (err error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
 }
