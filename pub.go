@@ -18,6 +18,7 @@ go run pub.go cli
 package main
 
 import (
+	"bufio"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -26,6 +27,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 //Credentials for user
@@ -142,6 +144,38 @@ func server() {
 				je.Encode(&Msg{Id: "Failure", Arg: "User name or password is incorrect"})
 				fmt.Println("User couldn't log in")
 			}
+
+			scanner := bufio.NewScanner(conn) // el scanner nos permite trabajar con la entrada línea a línea (por defecto)
+
+			for scanner.Scan() { // escaneamos la conexión
+
+				acc := scanner.Text()          // Texto que recibimos del CLIENTE
+				arg := strings.Split(acc, " ") //Separamos la orden del parámetro con split.
+				salida := ""
+
+				switch arg[0] { //Según la orden hacemos una cosa u otra. (MOVE, GET, etc...)
+
+				case "upload":
+					fmt.Println("cliente[", port, "]: ", acc)
+					os.Rename("local/"+arg[1], "remoto/"+arg[1])
+					salida = "Archivo cifrado y subido con éxito.\n "
+				case "get":
+					// AQUÍ CÓDIGO PARA RECUPERAR FICHERO
+
+					os.Rename("remoto/"+arg[1], "local/"+arg[1])
+					salida = "Archivo descifrado y recuperado con éxito.\n "
+				default:
+					salida = "Acciones disponibles: UPLOAD o GET seguido de espacio y nombre de archivo."
+				}
+				//fmt.Println("cliente[", port, "]----: ", arg[0])
+				//if acc == "prueba" {
+				//AQUÍ CAMBIA DE LUGAR EL FICHERO PRUEBO.TXT
+
+				//}
+				// mostramos el mensaje del cliente
+				fmt.Fprintln(conn, "ack: ", salida) // enviamos ack al cliente
+			}
+
 			conn.Close() // cerramos la conexión
 			fmt.Println("cierre[", port, "]")
 
@@ -219,6 +253,15 @@ func client() {
 	var m Msg
 	jd.Decode(&m)
 	fmt.Println(m.Arg)
+
+	keyscan := bufio.NewScanner(os.Stdin) // scanner para la entrada estándar (teclado)
+	netscan := bufio.NewScanner(conn)     // scanner para la conexión (datos desde el servidor)
+
+	for keyscan.Scan() { // escaneamos la entrada
+		fmt.Fprintln(conn, keyscan.Text())         // enviamos la entrada al servidor
+		netscan.Scan()                             // escaneamos la conexión
+		fmt.Println("servidor: " + netscan.Text()) // mostramos mensaje desde el servidor
+	}
 }
 
 func checkCredentials(username string, pass string) bool {
