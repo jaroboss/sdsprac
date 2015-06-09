@@ -153,15 +153,14 @@ func server() {
 
 					case "upload":
 						fmt.Println("cliente[", port, "]: ", acc)
-						CopyFile("local/"+arg[1], "uploads")
-						salida = "Archivo cifrado y subido con éxito.\n "
-					case "get":
-						// AQUÍ CÓDIGO PARA RECUPERAR FICHERO
-
-						os.Rename("remoto/"+arg[1], "local/"+arg[1])
-						salida = "Archivo descifrado y recuperado con éxito.\n "
+						CopyFile("local/"+arg[1], "uploads/"+arg[1])
+						salida = "File " + arg[1] + " has been uploaded succesfully.\n "
+					case "download":
+						fmt.Println("Donwloading file...")
+						CopyFile("uploads/"+arg[1], "downloads/"+arg[1])
+						salida = "File " + arg[1] + " has been downloaded succesfully. Have a look into directory donwloads, and you will find it.\n "
 					default:
-						salida = "Acciones disponibles: UPLOAD o GET seguido de espacio y nombre de archivo."
+						salida = "Available actions: Type UPLOAD or DOWNLOAD follow by blank space and the name of the file."
 					}
 					// mostramos el mensaje del cliente
 					fmt.Fprintln(conn, "ack: ", salida) // enviamos ack al cliente
@@ -250,14 +249,14 @@ func client() {
 	jd.Decode(&m)
 	fmt.Println(m.Arg)
 
-	/*keyscan := bufio.NewScanner(os.Stdin) // scanner para la entrada estándar (teclado)
+	keyscan := bufio.NewScanner(os.Stdin) // scanner para la entrada estándar (teclado)
 	netscan := bufio.NewScanner(conn)     // scanner para la conexión (datos desde el servidor)
 
 	for keyscan.Scan() { // escaneamos la entrada
 		fmt.Fprintln(conn, keyscan.Text())         // enviamos la entrada al servidor
 		netscan.Scan()                             // escaneamos la conexión
 		fmt.Println("servidor: " + netscan.Text()) // mostramos mensaje desde el servidor
-	}*/
+	}
 }
 
 func checkCredentials(username string, pass string) bool {
