@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -153,10 +154,13 @@ func server() {
 
 					case "upload":
 						fmt.Println("cliente[", port, "]: ", acc)
+
+						cipherFile("local/" + arg[1])
 						CopyFile("local/"+arg[1], "uploads/"+arg[1])
 						salida = "File " + arg[1] + " has been uploaded succesfully.\n "
 					case "download":
 						fmt.Println("Donwloading file...")
+						decipherFile("temp/" + arg[1])
 						CopyFile("uploads/"+arg[1], "downloads/"+arg[1])
 						salida = "File " + arg[1] + " has been downloaded succesfully. Have a look into directory donwloads, and you will find it.\n "
 					default:
@@ -265,6 +269,78 @@ func checkCredentials(username string, pass string) bool {
 	} else {
 		return false
 	}
+
+}
+
+func cipherFile(filein string) {
+
+	//Leemos el contenido
+	data, err := ioutil.ReadFile(filein)
+
+	//Datos a cifrar
+	dataC := []byte(string(data))
+	fmt.Println("datos del archivo: " + string(data))
+	//Encriptamos AES del modo CFB
+	//Creamos el cifrador
+	key := []byte("zI93JjM5NgH12AJD")
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+
+	// IV tiene que ser unica (no segura), es común
+	// incluirla al principio del ciphertext
+	ciphertext := make([]byte, aes.BlockSize+len(dataC))
+	iv := ciphertext[:aes.BlockSize]
+	//Leemos len(IV) con datos aleatorios para que sea unica
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		panic(err)
+	}
+
+	//Creamos el cifradorCFB y ciframos el texto
+	stream := cipher.NewCFBEncrypter(block, iv)
+	stream.XORKeyStream(ciphertext[aes.BlockSize:], dataC)
+	fmt.Println("datos del encripto: " + string(ciphertext))
+	//Encriptamos el archivo
+
+	dest := strings.Split(filein, "/")
+	err = ioutil.WriteFile("temp/"+dest[1], ciphertext, 0777)
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func decipherFile(filein string) {
+
+	//Leemos el contenido
+	data, err := ioutil.ReadFile(filein)
+
+	//Datos a descifrar
+	ciphertext := data
+
+	//Desencriptamos AES del modo CFB
+	//Creamos el cifrador
+	key := []byte("zI93JjM5NgH12AJD")
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+
+	// Asignamos IV y ciphertext
+	if len(ciphertext) < aes.BlockSize {
+		panic("ciphertext too short")
+	}
+	iv := ciphertext[:aes.BlockSize]
+	ciphertext = ciphertext[aes.BlockSize:]
+
+	//Creamos el descifradorCFB y desciframos el texto
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(ciphertext, ciphertext)
+
+	dest := strings.Split(filein, "/")
+	//Guardamos el archivo recuperado
+	err = ioutil.WriteFile("local/recovered"+dest[1], ciphertext, 0777)
 
 }
 
