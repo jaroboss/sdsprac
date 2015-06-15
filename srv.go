@@ -149,22 +149,22 @@ func server() {
 						fmt.Println("cliente[", port, "]: ", acc)
 
 						CopyFile("temp/"+arg[1], "uploads/"+arg[1])
-						salida = "File " + arg[1] + " has been uploaded succesfully.\n "
+						salida = "File " + arg[1] + " has been uploaded succesfully."
 
 					case "download":
 						//MANDAMOS EL ARCHIVO CIFRADO AL CLIENTE A LA CARPETA TEMP
 
 						fmt.Println("cliente[", port, "]: ", acc)
-						fmt.Println("Donwloading file...")
 
 						CopyFile("uploads/"+arg[1], "temp/"+arg[1])
-						salida = "File " + arg[1] + " has been downloaded succesfully. Now deciphering...\n "
+						salida = "File " + arg[1] + " has been downloaded succesfully. Now deciphering..."
 
 					case "getsize":
 
 						//PREGUNTAMOS POR EL TAMAÑO DEL ARCHIVO SOLICITADO
 
 						//Los metadatos se pueden obtener gracias a la interfaz FILEINFO:
+						fmt.Println("cliente[", port, "]: ", acc)
 						fi, err := os.Stat("uploads/" + arg[1])
 						if err != nil {
 							salida = "File not found"
@@ -177,6 +177,7 @@ func server() {
 					case "getdate":
 
 						//Los metadatos se pueden obtener gracias a la interfaz FILEINFO:
+						fmt.Println("cliente[", port, "]: ", acc)
 						fi, err := os.Stat("uploads/" + arg[1])
 						if err != nil {
 							salida = "File not found"
