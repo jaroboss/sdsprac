@@ -30,6 +30,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 //Credentials for user
@@ -134,23 +135,42 @@ func client() {
 		switch arg[0] { //Según la orden hacemos una cosa u otra. (MOVE, GET, etc...)
 
 		case "upload":
-			fmt.Println("Cifrando archivo...")
+
+			//Primero ENCRIPTAMOS en el cliente, situando el archivo en la carpeta temp/ del cliente.
+			//Luego se manda el mensaje al servidor, que subirá el archivo ya cifrado previamente, desde temp/ a /uploads.
+
+			fmt.Println("Encrypting file...")
 			cipherFile("local/" + arg[1])
 
-		default:
-		}
-
-		fmt.Fprintln(conn, keyscan.Text()) // enviamos la entrada al servidor
-		netscan.Scan()                     // escaneamos la conexión
-
-		fmt.Println("servidor: " + netscan.Text()) // mostramos mensaje desde el servidor
-
-		switch arg[0] { //Según la orden hacemos una cosa u otra. (MOVE, GET, etc...)
+			//Enviamos la entrada al servidor, escaneamos conexion, y mostramos respuesta del servidor.
+			fmt.Fprintln(conn, keyscan.Text())
+			time.Sleep(1500 * time.Millisecond)
+			netscan.Scan()
+			fmt.Println("servidor: " + netscan.Text())
 
 		case "download":
+
+			//En este caso, primero descargarmos el archivo encriptado, que se situará temporalmente en la carpeta temp/.
+			//Luego, desciframos en el cliente, leyendo de la carpeta temp/, y guardando en local/
+
+			//Enviamos la entrada al servidor, escaneamos conexion, y mostramos respuesta del servidor.
+			fmt.Fprintln(conn, keyscan.Text())
+			time.Sleep(1500 * time.Millisecond)
+			netscan.Scan()
+			fmt.Println("servidor: " + netscan.Text())
+
 			decipherFile("temp/" + arg[1])
-			fmt.Println("File downloaded has been downloaded and deciphered succesfully.")
+			fmt.Println("File has been downloaded and deciphered succesfully.")
+			fmt.Println("You can see in local/ dir, with the same name follow by 'recovered'. ")
+
+			//Si la acción es GETSIZE o GETDATE, el procedimiento residirá en el servidor, simplemente mandamos la orden y escuchamos respuesta.
 		default:
+			//Enviamos la entrada al servidor, escaneamos conexion, y mostramos respuesta del servidor.
+			fmt.Fprintln(conn, keyscan.Text())
+			time.Sleep(1500 * time.Millisecond)
+			netscan.Scan()
+			fmt.Println("servidor: " + netscan.Text())
+
 		}
 
 	}
@@ -172,7 +192,7 @@ func cipherFile(filein string) {
 
 	//Datos a cifrar
 	dataC := []byte(string(data))
-	fmt.Println("datos del archivo: " + string(data))
+
 	//Encriptamos AES del modo CFB
 	//Creamos el cifrador
 	key := []byte("zI93JjM5NgH12AJD")
@@ -193,7 +213,6 @@ func cipherFile(filein string) {
 	//Creamos el cifradorCFB y ciframos el texto
 	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(ciphertext[aes.BlockSize:], dataC)
-	fmt.Println("datos del encripto: " + string(ciphertext))
 	//Encriptamos el archivo
 
 	dest := strings.Split(filein, "/")

@@ -29,6 +29,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -122,6 +123,7 @@ func server() {
 
 			// leemos el mensaje de HELLO del cliente y lo imprimimos
 			var m Msg
+
 			jd.Decode(&m)
 			username := m.Arg.(string)
 			jd.Decode(&m)
@@ -142,21 +144,53 @@ func server() {
 					switch arg[0] { //Según la orden hacemos una cosa u otra. (MOVE, GET, etc...)
 
 					case "upload":
+						//SUBIMOS EL ARCHIVO YA CIFRADO PREVIAMENTE.
+
 						fmt.Println("cliente[", port, "]: ", acc)
 
-						cipherFile("local/" + arg[1])
 						CopyFile("temp/"+arg[1], "uploads/"+arg[1])
 						salida = "File " + arg[1] + " has been uploaded succesfully.\n "
+
 					case "download":
+						//MANDAMOS EL ARCHIVO CIFRADO AL CLIENTE A LA CARPETA TEMP
+
+						fmt.Println("cliente[", port, "]: ", acc)
 						fmt.Println("Donwloading file...")
-						decipherFile("temp/" + arg[1])
-						CopyFile("uploads/"+arg[1], "downloads/"+arg[1])
-						salida = "File " + arg[1] + " has been downloaded succesfully. Have a look into directory donwloads, and you will find it.\n "
+
+						CopyFile("uploads/"+arg[1], "temp/"+arg[1])
+						salida = "File " + arg[1] + " has been downloaded succesfully. Now deciphering...\n "
+
+					case "getsize":
+
+						//PREGUNTAMOS POR EL TAMAÑO DEL ARCHIVO SOLICITADO
+
+						//Los metadatos se pueden obtener gracias a la interfaz FILEINFO:
+						fi, err := os.Stat("uploads/" + arg[1])
+						if err != nil {
+							salida = "File not found"
+						}
+
+						//Convertimos int64 en string
+						t := strconv.FormatInt(fi.Size(), 10)
+						salida = "The file is " + t + " bytes long"
+
+					case "getdate":
+
+						//Los metadatos se pueden obtener gracias a la interfaz FILEINFO:
+						fi, err := os.Stat("uploads/" + arg[1])
+						if err != nil {
+							salida = "File not found"
+						}
+
+						//Formateamos fecha (time) para poder mostrarla.
+						const layout = "Jan 2, 2006 at 3:04pm (MST)"
+						salida = "Date of last backup of this file: " + fi.ModTime().Format(layout)
+
 					default:
-						salida = "Available actions: Type UPLOAD or DOWNLOAD follow by blank space and the name of the file."
+						salida = "Available actions: Type 'upload' or 'download' or 'getsize' or 'getdate' follow by blank space and the name of the file."
 					}
-					// mostramos el mensaje del cliente
-					fmt.Fprintln(conn, "ack: ", salida) // enviamos ack al cliente
+
+					fmt.Fprintln(conn, "", salida) // ENVIAMOS RESPUESTA AL CLIENTE.
 				}
 			} else {
 				je.Encode(&Msg{Id: "Failure", Arg: "User name or password is incorrect"})
@@ -164,7 +198,7 @@ func server() {
 			}
 
 			conn.Close() // cerramos la conexión
-			fmt.Println("cierre[", port, "]")
+			fmt.Println("Closed[", port, "]")
 
 		}()
 	}
