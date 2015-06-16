@@ -195,7 +195,7 @@ func cipherFile(filein string) {
 
 	//Encriptamos AES del modo CFB
 	//Creamos el cifrador
-	key := []byte("zI93JjM5NgH12AJD")
+	key := []byte("LI93Jjl2XgH12AJZ")
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)
@@ -233,7 +233,7 @@ func decipherFile(filein string) {
 
 	//Desencriptamos AES del modo CFB
 	//Creamos el cifrador
-	key := []byte("zI93JjM5NgH12AJD")
+	key := []byte("LI93Jjl2XgH12AJZ")
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		panic(err)
