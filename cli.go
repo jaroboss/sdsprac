@@ -154,6 +154,7 @@ func client() {
 			//Luego, desciframos en el cliente, leyendo de la carpeta temp/, y guardando en local/
 
 			//Enviamos la entrada al servidor, escaneamos conexion, y mostramos respuesta del servidor.
+			fmt.Println("Donwloading file...")
 			fmt.Fprintln(conn, keyscan.Text())
 			time.Sleep(1500 * time.Millisecond)
 			netscan.Scan()
@@ -161,7 +162,7 @@ func client() {
 
 			decipherFile("temp/" + arg[1])
 			fmt.Println("File has been downloaded and deciphered succesfully.")
-			fmt.Println("You can see in local/ dir, with the same name follow by 'recovered'. ")
+			fmt.Println("You can see it in local/ dir, with the same name follow by 'recovered'. ")
 
 			//Si la acción es GETSIZE o GETDATE, el procedimiento residirá en el servidor, simplemente mandamos la orden y escuchamos respuesta.
 		default:
